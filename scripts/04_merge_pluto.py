@@ -174,7 +174,33 @@ for _, row in merged.iterrows():
     records.append(record)
 
 # ------------------------------------------------------------------
-# Step 5 – Save the output
+# Step 5 – Sort by violation count and assign competitive ranks
+# ------------------------------------------------------------------
+
+print("Ranking buildings ...")
+
+records.sort(key=lambda r: r["violationCount"], reverse=True)
+
+# Competitive ranking: ties share the same rank, next rank skips ahead.
+# Example: counts [50, 40, 40, 30] → ranks [1, 2, 2, 4]
+rank = 1
+for i, record in enumerate(records):
+    if i > 0 and record["violationCount"] < records[i - 1]["violationCount"]:
+        rank = i + 1
+    record["rank"] = rank
+
+print(f"  Ranks assigned (1 through {rank}).")
+
+# Filter to buildings with 5 or more open violations
+MIN_VIOLATIONS = 5
+total_before = len(records)
+records = [r for r in records if r["violationCount"] >= MIN_VIOLATIONS]
+print(
+    f"  Filtered to {len(records):,} buildings with {MIN_VIOLATIONS}+ violations (dropped {total_before - len(records):,})."
+)
+
+# ------------------------------------------------------------------
+# Step 6 – Save the output
 # ------------------------------------------------------------------
 
 output_dir.mkdir(exist_ok=True)
