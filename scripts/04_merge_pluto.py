@@ -6,7 +6,7 @@ result to a JSON schema suitable for use in a SvelteKit app.
 The two datasets are joined on the BBL (Borough-Block-Lot) identifier, which
 is a unique 10-digit code that NYC uses to identify every tax lot.
 
-Inputs:  output/bronx_c_violations.parquet
+Inputs:  output/bronx_c_violations.csv
          output/pluto_raw.parquet
 Output:  output/bronx_buildings.json
 """
@@ -62,7 +62,7 @@ def ensure_list_column(series: pd.Series) -> pd.Series:
 
 print("Loading grouped violations data ...")
 
-violations = pd.read_parquet(output_dir / "bronx_c_violations.parquet")
+violations = pd.read_csv(output_dir / "bronx_violations.csv")
 violations["bbl"] = bbl_to_str(violations["bbl"])
 
 # Report how many buildings are missing a BBL (they won't get coordinates)
@@ -120,20 +120,36 @@ print("Converting to JSON ...")
 merged["descriptions"] = ensure_list_column(merged["descriptions"])
 merged["dates"] = ensure_list_column(merged["dates"])
 merged["statuses"] = ensure_list_column(merged["statuses"])
+merged["violationids"] = ensure_list_column(merged["violationids"])
+merged["ordernumbers"] = ensure_list_column(merged["ordernumbers"])
 
 records = []
 
 for _, row in merged.iterrows():
     # Pair and sort violations by date (most recent first)
-    violations_triplets = list(zip(row["descriptions"], row["dates"], row["statuses"]))
-    violations_triplets = sorted(
-        violations_triplets,
+    violations_tuples = list(
+        zip(
+            row["descriptions"],
+            row["dates"],
+            row["statuses"],
+            row["violationids"],
+            row["ordernumbers"],
+        )
+    )
+    violations_tuples = sorted(
+        violations_tuples,
         key=lambda t: t[1] if t[1] is not None else "",
         reverse=True,
     )
     violations_list = [
-        {"description": desc, "date": date, "currentStatus": status}
-        for desc, date, status in violations_triplets
+        {
+            "violationId": str(int(vid)) if vid is not None else None,
+            "orderNumber": str(int(ono)) if ono is not None else None,
+            "description": desc,
+            "date": date,
+            "currentStatus": status,
+        }
+        for desc, date, status, vid, ono in violations_tuples
     ]
 
     record = {

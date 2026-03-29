@@ -6,8 +6,8 @@ Each building row contains the violation count, the date of the most recent
 violation, and a nested list of all violation descriptions and dates for use
 in the final JSON output.
 
-Input:  output/violations_raw.parquet
-Output: output/bronx_c_violations.parquet
+Input:  output/violations_raw.csv
+Output: output/bronx_violations.csv
 """
 
 from pathlib import Path
@@ -21,8 +21,8 @@ output_dir = script_dir / "output"
 # Print a status message so the user knows the script has started
 print("Loading raw violations data ...")
 
-# Read the Parquet file that 01_download_violations.py wrote into a DataFrame
-violations = pd.read_parquet(output_dir / "violations_raw.parquet")
+# Read the CSV file that 01_download_violations.py wrote into a DataFrame
+violations = pd.read_csv(output_dir / "violations_raw.csv")
 
 # Print the row count so the user can confirm the file loaded completely
 print(f"  {len(violations):,} violation rows loaded.")
@@ -73,6 +73,10 @@ buildings = (
         dates=("inspectiondate", list),
         # Gather every violation status into a parallel list for later use in the JSON output
         statuses=("currentstatus", list),
+        # Gather every violation ID into a parallel list for later use in the JSON output
+        violationids=("violationid", list),
+        # Gather every order number into a parallel list for later use in the JSON output
+        ordernumbers=("ordernumber", list),
     )
     # Drop the groupby index so buildingid becomes a plain column again
     .reset_index()
@@ -93,9 +97,9 @@ buildings = buildings.sort_values("violationCount", ascending=False)
 # Make the output directory if it does not already exist
 output_dir.mkdir(exist_ok=True)
 
-# Save the grouped building data to a Parquet file for use in the merge script
-output_path = output_dir / "bronx_c_violations.parquet"
-buildings.to_parquet(output_path, index=False, compression="snappy")
+# Save the grouped building data to a CSV file for use in the merge script
+output_path = output_dir / "bronx_violations.csv"
+buildings.to_csv(output_path, index=False)
 
 # Tell the user how many buildings were found and where the file was saved
 print(f"Saved {len(buildings):,} buildings to {output_path}")
