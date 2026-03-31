@@ -28,6 +28,11 @@ output_dir = script_dir / "output"
 # encoding corruption (``§`` rendered as ``?``), so we match all variants.
 _SPLIT_PATTERN = re.compile(r"[§?]11-06\([Bb]\)\(2\)")
 
+# Pattern that matches apartment number references such as "apt c3" or "apt 1b"
+# so they can be title-cased after the sentence-case conversion.  The identifier
+# is limited to 1-4 alphanumeric characters to avoid matching regular words.
+_APT_PATTERN = re.compile(r"\bapt\s+([a-z0-9]{1,4})\b", re.IGNORECASE)
+
 
 def split_description(text: str) -> tuple[str, str]:
     """
@@ -47,10 +52,18 @@ def split_description(text: str) -> tuple[str, str]:
     return boilerplate, specific
 
 
+def _titlecase_apt(match: re.Match) -> str:
+    """Return an apartment reference in title case (e.g. ``Apt C3``)."""
+    return "Apt " + match.group(1).upper()
+
+
 def to_sentence_case(text: str) -> str:
     """
     Convert an ALL-CAPS string to sentence case (first character capitalised,
     remainder lower-cased).
+
+    Apartment number references such as ``APT C3`` or ``APT 1B`` are
+    title-cased (``Apt C3``, ``Apt 1B``) rather than fully lower-cased.
 
     Ordinal suffixes such as ``1st``, ``2nd``, ``3rd``, ``4th`` that are
     already lower-cased in the source data are preserved by this approach.
@@ -58,7 +71,8 @@ def to_sentence_case(text: str) -> str:
     if not text:
         return text
     lowered = text.lower()
-    return lowered[0].upper() + lowered[1:]
+    result = lowered[0].upper() + lowered[1:]
+    return _APT_PATTERN.sub(_titlecase_apt, result)
 
 
 # ------------------------------------------------------------------
